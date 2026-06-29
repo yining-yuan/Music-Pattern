@@ -1,0 +1,26 @@
+test,metric,value
+microtuning,grid_gcd,1
+microtuning,frac_odd,0.47421875
+microtuning,odd_vs_label_rho,-0.044145804252666225
+microtuning,p,0.21229205715205948
+microtuning,like_rate_no_odd,
+microtuning,like_rate_any_odd,0.22875
+notsure_between,dislike_score,-1.7041063181808587
+notsure_between,notsure_score,-1.0027734352184332
+notsure_between,like_score,-0.26108860564954783
+notsure_between,is_between,True
+rater_drift,id_vs_label_rho,-0.012844101785472354
+rater_drift,p,0.7168043620942348
+rater_drift,like_rate_early,0.235
+rater_drift,like_rate_late,0.2225
+global_signal,cv_auc,0.6804185184397615
+global_signal,null_mean,0.503498790883724
+global_signal,null_p,0.03225806451612903
+interactions.total_drift x c2_span,lr_stat,2.010385481134904
+interactions.total_drift x c2_span,p,0.15622561844680713
+interactions.c3_gap0 x c2_span,lr_stat,0.8003052748392747
+interactions.c3_gap0 x c2_span,p,0.3710021130406912
+interactions.clash_le2 x c3_span,lr_stat,2.116899931905891
+interactions.clash_le2 x c3_span,p,0.14568116041605148
+octave,auc_raw_pitch,0.551730772865706
+octave,auc_pitch_class,0.5824815472435457

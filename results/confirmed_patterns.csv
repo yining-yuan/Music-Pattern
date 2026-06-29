@@ -1,0 +1,16 @@
+pattern,direction,n_matching,mean_rating_shift,cliffs_delta,perm_p,survives_fdr,ci_lo,ci_hi,bootstrap_stable,graded_rho,graded_p
+clash_le1 <= median(2.00)  [rho=-0.263],toward LIKE,186,0.3070,0.1803,0.0013,True,0.0701,0.2885,True,-0.1984,0.0004
+subgroup: clash_ic1 > 3.00 AND clash_le1 > 2.00,toward DISLIKE,90,-0.3043,-0.1905,0.0030,True,-0.3039,-0.0726,True,,
+subgroup: clash_ic1 <= 3.00 AND clash_le1 <= 2.00,toward LIKE,169,0.2687,0.1575,0.0040,True,0.0416,0.2621,True,,
+clash_ic1 <= median(3.00)  [rho=-0.287],toward LIKE,213,0.2416,0.1522,0.0143,True,0.0388,0.2698,True,-0.2017,0.0003
+subgroup: clash_ic1 > 3.00,toward DISLIKE,107,-0.2416,-0.1522,0.0147,True,-0.2596,-0.0469,True,,
+subgroup: clash_le1 <= 2.00 AND mel_motion <= 9.00,toward LIKE,93,0.2494,0.1476,0.0157,True,0.0264,0.2738,True,,
+subgroup: clash_le1 <= 2.00 AND v3_leap <= 9.00,toward LIKE,93,0.2494,0.1476,0.0177,True,0.0067,0.2762,True,,
+subgroup: clash_ic1 <= 3.00 AND v3_leap <= 9.00,toward LIKE,108,0.2261,0.1459,0.0217,True,0.0274,0.2636,True,,
+n14 > median(64.00)  [rho=+0.186],toward LIKE,141,0.2124,0.1213,0.0233,True,0.0131,0.2303,True,0.1401,0.0121
+n15 > median(67.00)  [rho=+0.182],toward LIKE,134,0.2194,0.1281,0.0240,True,0.0149,0.2424,True,0.1432,0.0103
+subgroup: clash_ic1 <= 3.00 AND mel_motion <= 9.00,toward LIKE,108,0.2261,0.1459,0.0243,True,0.0285,0.2597,True,,
+max_voice_leap <= median(7.00)  [rho=-0.188],toward LIKE,213,0.1854,0.1302,0.0676,False,,,,-0.1588,0.0044
+clash_le2 <= median(5.00)  [rho=-0.185],toward LIKE,210,0.1117,0.0699,0.2552,False,,,,-0.1059,0.0585
+mel_motion <= median(11.00)  [rho=-0.184],toward LIKE,188,0.0990,0.0660,0.3062,False,,,,-0.0783,0.1625
+v3_leap <= median(11.00)  [rho=-0.184],toward LIKE,188,0.0990,0.0660,0.3062,False,,,,-0.0783,0.1625

@@ -1,0 +1,6 @@
+,value
+mean_5NN_label_disagreement,0.544
+near_duplicate_conflict_rate,0.475
+majority_class_baseline_acc,0.61
+rough_accuracy_ceiling,0.456
+n_rows,800.0
