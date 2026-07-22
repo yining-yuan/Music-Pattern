@@ -20,6 +20,7 @@ Run:  /Users/jh22215/anaconda3/bin/python discover.py
 """
 
 import itertools
+import re
 import numpy as np
 import pandas as pd
 from scipy import stats
@@ -123,7 +124,7 @@ def build_features(df):
     pc_pair = np.minimum(pair_all % 12, 12 - (pair_all % 12))
     f["clash_ic1"] = (pc_pair == 1).sum(axis=(1, 2))     # semitone interval-classes
 
-    # J. BASS line (lowest voice) and MELODY (highest voice), isolated.
+    # J. BASS line (lowest note) and TOP NOTE (highest note) per chord, isolated.
     bass = s[:, :, 0]                                    # (n,4) lowest note per chord
     mel = s[:, :, 3]                                     # (n,4) highest note per chord
     f["bass_motion"] = np.abs(np.diff(bass, axis=1)).sum(1)
@@ -175,6 +176,55 @@ def cond_mask(df, cond):
 
 def cond_str(cond):
     return " AND ".join(f"{ft} {op} {thr:.2f}" for ft, op, thr in cond)
+
+
+# --- plain-English translation of patterns for the report -------------------- #
+# (phrase, kind): kind "count" -> integer tallies; "cont" -> continuous pitch/interval
+FEATURE_EN = {
+    "clash_le1": ("near-unison clashes (note-pairs ≤1 apart)", "count"),
+    "clash_le2": ("close clashes (note-pairs ≤2 apart)", "count"),
+    "clash_ic1": ("semitone clashes", "count"),
+    "min_interval": ("smallest interval between any two notes", "cont"),
+    "max_voice_leap": ("biggest single jump any voice makes between chords", "cont"),
+    "voice_leap_total": ("total distance all voices travel", "cont"),
+    "mel_motion": ("total movement of the top note", "cont"),
+    "mel_drift": ("net rise/fall of the top note", "cont"),
+    "v3_leap": ("total leap of the top voice", "cont"),
+    "bass_motion": ("total movement of the bass note", "cont"),
+    "abs_motion": ("total pitch movement across the progression", "cont"),
+    "total_drift": ("net pitch change from first to last chord", "cont"),
+    "c0_span": ("spread of chord 1 (lowest→highest)", "cont"),
+    "c1_span": ("spread of chord 2 (lowest→highest)", "cont"),
+    "c2_span": ("spread of chord 3 (lowest→highest)", "cont"),
+    "c3_span": ("spread of the final chord (lowest→highest)", "cont"),
+    "c3_std": ("how spread-out the final chord's notes are", "cont"),
+    "c3_mean": ("average pitch of the final chord", "cont"),
+    "c3_gap0": ("gap between the two lowest notes of the final chord", "cont"),
+    "n13": ("the final chord's 2nd note (pitch height)", "cont"),
+    "n14": ("the final chord's 3rd note (pitch height)", "cont"),
+    "n15": ("the final chord's top note (pitch height)", "cont"),
+    "pc_distinct": ("number of distinct pitch-classes used", "count"),
+    "pc_entropy": ("variety of pitch-classes used", "cont"),
+}
+
+_COND_RE = re.compile(r"(\w+)\s*(<=|>)\s*(?:median\()?(-?\d+\.?\d*)")
+
+
+def humanize(pattern):
+    """Turn a raw pattern string into a natural-language phrase with value ranges."""
+    s = re.sub(r"\s*\[rho=[^\]]*\]", "", pattern).replace("subgroup:", "").strip()
+    parts = []
+    for feat, op, thr in _COND_RE.findall(s):
+        phrase, kind = FEATURE_EN.get(feat, (feat, "cont"))
+        val = float(thr)
+        if kind == "count":
+            iv = int(round(val))
+            parts.append(f"at most {iv} {phrase}" if op == "<="
+                         else f"more than {iv} {phrase} ({iv + 1} or more)")
+        else:
+            parts.append(f"{phrase} is low (≤ {val:g})" if op == "<="
+                         else f"{phrase} is high (> {val:g})")
+    return " AND ".join(parts) if parts else pattern
 
 
 # --------------------------------------------------------------------------- #
@@ -573,9 +623,9 @@ def write_findings_md(out, ceiling, path, diag=None):
     ceil_below = ceiling["rough_accuracy_ceiling"] < ceiling["majority_class_baseline_acc"]
 
     def md_table(rows):
-        head = "| pattern | direction | n | Cliff's δ | 95% CI | perm p |\n|---|---|---|---|---|---|"
+        head = "| pattern (plain English) | direction | n | Cliff's δ | 95% CI | perm p |\n|---|---|---|---|---|---|"
         body = "\n".join(
-            f"| `{r['pattern']}` | {r['direction'].replace('toward ','')} | {r['n_matching']} "
+            f"| {humanize(r['pattern'])} | {r['direction'].replace('toward ','')} | {r['n_matching']} "
             f"| {r['cliffs_delta']:+.2f} | [{r['ci_lo']:+.2f}, {r['ci_hi']:+.2f}] | {r['perm_p']:.4f} |"
             for _, r in rows.iterrows())
         return head + "\n" + body
@@ -594,7 +644,7 @@ def write_findings_md(out, ceiling, path, diag=None):
         "semitone clashes** (`clash_ic1`, `clash_le1` — counts of near-unison/semitone intervals) "
         "are reliably **liked**; clash-heavy ones are **disliked**. This is the strongest signal "
         "found, and it is pure subtraction — no music theory imposed.\n"
-        "- Secondary, weaker signals: **smaller voice leaps / calmer melody** (`max_voice_leap`, "
+        "- Secondary, weaker signals: **smaller voice leaps / calmer top note** (`max_voice_leap`, "
         "`mel_motion`, `v3_leap`) and a **higher final chord** (`n14`, `n15`).\n"
         + (f"- **There IS real signal** (test #9): like-vs-rest CV-AUC = **{gs['cv_auc']:.2f}** "
            f"vs a permutation null of {gs['null_mean']:.2f} (p = {gs['null_p']:.3f}). "
@@ -605,7 +655,7 @@ def write_findings_md(out, ceiling, path, diag=None):
     if top is not None:
         lines.append("## Strongest confirmed pattern\n")
         lines.append(
-            f"> `{top['pattern']}` → {top['direction']}  \n"
+            f"> **{humanize(top['pattern'])}** → {top['direction']}  \n"
             f"> Cliff's δ = {top['cliffs_delta']:+.2f} "
             f"(95% CI [{top['ci_lo']:+.2f}, {top['ci_hi']:+.2f}]), "
             f"perm p = {top['perm_p']:.4f}, n = {top['n_matching']}.\n")
@@ -617,7 +667,7 @@ def write_findings_md(out, ceiling, path, diag=None):
     if len(rej):
         lines.append("\n## Candidates that did NOT survive\n")
         lines.append("Found in discovery but failed held-out confirmation — treat as noise:\n")
-        lines.append("\n".join(f"- `{r['pattern']}` (perm p = {r['perm_p']:.3f})"
+        lines.append("\n".join(f"- {humanize(r['pattern'])} (perm p = {r['perm_p']:.3f})"
                                for _, r in rej.iterrows()))
 
     # ---- all tests, grouped by underlying signal, confirmed + failed ----
@@ -641,13 +691,13 @@ def write_findings_md(out, ceiling, path, diag=None):
     for g in sorted(tmp["theme"].unique()):
         sub = tmp[tmp["theme"] == g].sort_values("perm_p")
         lines.append(f"\n### Group {g}\n")
-        lines.append("| pattern | δ | perm p | verdict |\n|---|---|---|---|")
+        lines.append("| pattern (plain English) | δ | perm p | verdict |\n|---|---|---|---|")
         for _, r in sub.iterrows():
             v = "✅" if r["survives_fdr"] else "❌"
             note = ""
             if not r["survives_fdr"] and r["perm_p"] < 0.05:
                 note = " (raw p<0.05; lost to FDR)"
-            lines.append(f"| `{r['pattern']}` | {r['cliffs_delta']:+.2f} "
+            lines.append(f"| {humanize(r['pattern'])} | {r['cliffs_delta']:+.2f} "
                          f"| {r['perm_p']:.4f} | {v}{note} |")
 
     lines.append("\n**The conjunctions are mostly additive, not synergistic.** Test #10 "
@@ -663,7 +713,7 @@ def write_findings_md(out, ceiling, path, diag=None):
         "- `clash_le1` / `clash_le2` — count of intervals ≤1 / ≤2 units (near-unison beating). Lower = liked.\n"
         "- `min_interval` — the tightest interval anywhere; very small = harsh.\n"
         "- `max_voice_leap` — the **biggest single jump** any voice makes between chords. Smaller = smoother.\n"
-        "- `mel_motion`, `v3_leap` — how much the top/4th voice moves; less = calmer melody.\n"
+        "- `mel_motion`, `v3_leap` — how much the **top note** moves between chords; less = smoother.\n"
         "- `n13`–`n15` — the **final chord's notes**; higher = a higher-pitched ending.\n")
 
     lines.append("## Noise ceiling (single-rater self-consistency)\n")

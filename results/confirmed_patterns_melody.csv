@@ -1,0 +1,17 @@
+pattern,direction,n_matching,mean_rating_shift,cliffs_delta,perm_p,survives_fdr,ci_lo,ci_hi,bootstrap_stable,graded_rho,graded_p
+subgroup: v1_drift > 2.00 AND m5 > 68.00,toward LIKE,65,0.4124,0.2476,0.0007,True,0.1099,0.3939,True,,
+subgroup: m7 > 68.00 AND v1_drift > 2.00,toward LIKE,66,0.3764,0.2289,0.0010,True,0.0883,0.3688,True,,
+subgroup: v1_drift > 2.00 AND m6 > 68.00,toward LIKE,69,0.3658,0.2206,0.0023,True,0.0669,0.3620,True,,
+m8 > median(70.00)  [rho=+0.181],toward LIKE,140,0.2706,0.1664,0.0037,True,0.0509,0.2814,True,0.1077,0.0542
+m7 > median(70.00)  [rho=+0.184],toward LIKE,139,0.2665,0.1621,0.0050,True,0.0576,0.2728,True,0.1059,0.0584
+m6 > median(70.00)  [rho=+0.170],toward LIKE,138,0.2369,0.1426,0.0127,True,0.0307,0.2524,True,0.0964,0.0852
+melo_mean > median(70.00)  [rho=+0.158],toward LIKE,154,0.1921,0.1158,0.0383,False,,,,0.1200,0.0318
+v1_drift > median(0.00)  [rho=+0.162],toward LIKE,143,0.1946,0.1198,0.0430,False,,,,0.1315,0.0186
+m5 > median(70.00)  [rho=+0.155],toward LIKE,139,0.1902,0.1121,0.0457,False,,,,0.1067,0.0566
+subgroup: v1_drift <= 2.00 AND c3_icmin <= 1.00,toward DISLIKE,152,-0.1801,-0.1117,0.0536,False,,,,,
+total_drift > median(0.00)  [rho=+0.152],toward LIKE,156,0.1759,0.1098,0.0600,False,,,,0.1090,0.0513
+subgroup: m8 <= 72.00 AND v1_drift <= 2.00,toward DISLIKE,167,-0.1626,-0.1054,0.0943,False,,,,,
+subgroup: m6 > 68.00 AND total_drift > 2.25,toward LIKE,67,0.1903,0.1073,0.0953,False,,,,,
+subgroup: m7 > 68.00 AND total_drift > 2.25,toward LIKE,64,0.1953,0.1121,0.1040,False,,,,,
+v2_drift > median(0.00)  [rho=+0.156],toward LIKE,148,0.1281,0.0780,0.1629,False,,,,0.0874,0.1186
+subgroup: c3_icmin <= 1.00 AND total_drift <= 2.25,toward DISLIKE,149,-0.1062,-0.0573,0.2836,False,,,,,
