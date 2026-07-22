@@ -180,32 +180,87 @@ def cond_str(cond):
 
 # --- plain-English translation of patterns for the report -------------------- #
 # (phrase, kind): kind "count" -> integer tallies; "cont" -> continuous pitch/interval
-FEATURE_EN = {
-    "clash_le1": ("near-unison clashes (note-pairs ≤1 apart)", "count"),
-    "clash_le2": ("close clashes (note-pairs ≤2 apart)", "count"),
-    "clash_ic1": ("semitone clashes", "count"),
-    "min_interval": ("smallest interval between any two notes", "cont"),
-    "max_voice_leap": ("biggest single jump any voice makes between chords", "cont"),
-    "voice_leap_total": ("total distance all voices travel", "cont"),
-    "mel_motion": ("total movement of the top note", "cont"),
-    "mel_drift": ("net rise/fall of the top note", "cont"),
-    "v3_leap": ("total leap of the top voice", "cont"),
-    "bass_motion": ("total movement of the bass note", "cont"),
-    "abs_motion": ("total pitch movement across the progression", "cont"),
-    "total_drift": ("net pitch change from first to last chord", "cont"),
-    "c0_span": ("spread of chord 1 (lowest→highest)", "cont"),
-    "c1_span": ("spread of chord 2 (lowest→highest)", "cont"),
-    "c2_span": ("spread of chord 3 (lowest→highest)", "cont"),
-    "c3_span": ("spread of the final chord (lowest→highest)", "cont"),
-    "c3_std": ("how spread-out the final chord's notes are", "cont"),
-    "c3_mean": ("average pitch of the final chord", "cont"),
-    "c3_gap0": ("gap between the two lowest notes of the final chord", "cont"),
-    "n13": ("the final chord's 2nd note (pitch height)", "cont"),
-    "n14": ("the final chord's 3rd note (pitch height)", "cont"),
-    "n15": ("the final chord's top note (pitch height)", "cont"),
-    "pc_distinct": ("number of distinct pitch-classes used", "count"),
-    "pc_entropy": ("variety of pitch-classes used", "cont"),
-}
+# NOTE: this mapping is deliberately COMPLETE -- every engineered feature has an
+# entry, so no raw variable name can ever leak into the written report.
+def _build_feature_en():
+    chord_name = {0: "chord 1", 1: "chord 2", 2: "chord 3", 3: "the final chord"}
+    voice_name = {0: "the bass (lowest) voice", 1: "the second-lowest voice",
+                  2: "the third voice", 3: "the top voice"}
+    note_ord = {0: "lowest", 1: "2nd", 2: "3rd", 3: "top"}
+    d = {}
+
+    # whole-progression register
+    d["mean_all"] = ("the average pitch of the whole progression", "cont")
+    d["range_all"] = ("the pitch range of the whole progression", "cont")
+    d["std_all"] = ("how spread-out all the notes are in pitch", "cont")
+
+    # per-chord vertical shape
+    for c in range(4):
+        cn = chord_name[c]
+        gap_of = {0: f"the two lowest notes of {cn}",
+                  1: f"the 2nd and 3rd notes of {cn}",
+                  2: f"the two highest notes of {cn}"}
+        for g in range(3):
+            d[f"c{c}_gap{g}"] = (f"the gap between {gap_of[g]}", "cont")
+        d[f"c{c}_span"] = (f"the spread of {cn}, lowest to highest note", "cont")
+        d[f"c{c}_mean"] = (f"the average pitch of {cn}", "cont")
+        d[f"c{c}_std"] = (f"how spread-out the notes of {cn} are", "cont")
+        d[f"c{c}_pcspread"] = (f"how widely {cn} spans within a single octave", "cont")
+        d[f"c{c}_icmin"] = (f"the most consonant interval inside {cn}", "cont")
+        d[f"c{c}_icmax"] = (f"the harshest interval inside {cn}", "cont")
+        d[f"c{c}_icmean"] = (f"the average harshness of the intervals inside {cn}", "cont")
+
+    # chord-to-chord motion
+    for c in range(3):
+        d[f"move{c}"] = (f"the pitch step from chord {c+1} to chord {c+2}", "cont")
+        d[f"common{c}"] = (f"notes held over from chord {c+1} to chord {c+2}", "count")
+        d[f"commonpc{c}"] = (f"pitches shared (ignoring octave) between chord {c+1} "
+                             f"and chord {c+2}", "count")
+    d["total_drift"] = ("the net pitch change from the first chord to the last", "cont")
+    d["abs_motion"] = ("the total distance the harmony travels in pitch", "cont")
+    d["contour_up"] = ("upward moves between chords", "count")
+
+    # voice leading
+    for v in range(4):
+        d[f"v{v}_leap"] = (f"the total distance {voice_name[v]} travels", "cont")
+        d[f"v{v}_drift"] = (f"the net rise or fall of {voice_name[v]}", "cont")
+    d["max_voice_leap"] = ("the biggest single jump any voice makes between chords", "cont")
+    d["voice_leap_total"] = ("the total distance all four voices travel", "cont")
+    d["parallel_moves"] = ("times all four voices move the same direction together", "count")
+    d["contrary_moves"] = ("times the voices split and move in opposite directions", "count")
+    d["voice_crossings"] = ("times the voices cross over each other", "count")
+
+    # roughness / dissonance
+    d["clash_le1"] = ("near-unison clashes (two notes less than a semitone apart)", "count")
+    d["clash_le2"] = ("close clashes (two notes within a whole tone)", "count")
+    d["clash_ic1"] = ("semitone clashes", "count")
+    d["min_interval"] = ("the tightest interval between any two notes", "cont")
+
+    # outer lines
+    d["bass_motion"] = ("the total movement of the bass line", "cont")
+    d["bass_drift"] = ("the net rise or fall of the bass line", "cont")
+    d["bass_range"] = ("the pitch range covered by the bass line", "cont")
+    d["mel_motion"] = ("the total movement of the top note across the chords", "cont")
+    d["mel_drift"] = ("the net rise or fall of the top note", "cont")
+    d["mel_range"] = ("the pitch range covered by the top note", "cont")
+    d["mel_up"] = ("times the top note steps upward", "count")
+
+    # pitch content / repetition / tuning
+    d["pc_distinct"] = ("distinct pitches used, ignoring octave", "count")
+    d["pc_entropy"] = ("how evenly the twelve pitches are used", "cont")
+    d["pc_max"] = ("repetitions of the single most-repeated pitch", "count")
+    d["transpositions"] = ("chords that are an exact pitch-shift of the one before", "count")
+    d["repeats"] = ("chords that exactly repeat the one before", "count")
+    d["chord0_eq_2"] = ("cases where chord 1 and chord 3 are identical", "count")
+    d["odd_notes"] = ("notes falling off the standard tuning grid", "count")
+
+    # raw notes: position i is chord (i//4), voice (i%4), stored low->high
+    for i in range(16):
+        d[f"n{i}"] = (f"{chord_name[i // 4]}'s {note_ord[i % 4]} note (pitch height)", "cont")
+    return d
+
+
+FEATURE_EN = _build_feature_en()
 
 _COND_RE = re.compile(r"(\w+)\s*(<=|>)\s*(?:median\()?(-?\d+\.?\d*)")
 
@@ -225,6 +280,115 @@ def humanize(pattern):
             parts.append(f"{phrase} is low (≤ {val:g})" if op == "<="
                          else f"{phrase} is high (> {val:g})")
     return " AND ".join(parts) if parts else pattern
+
+
+def plain_feature(feat):
+    """Plain-English noun phrase for a single feature (no variable names)."""
+    return FEATURE_EN.get(feat, (feat, "cont"))[0]
+
+
+# --------------------------------------------------------------------------- #
+# Shared "what we did and why" methods preamble for the written reports.      #
+# --------------------------------------------------------------------------- #
+def methods_section():
+    return """## Statistical methods used — and why
+
+This analysis is **exploratory pattern discovery on a single rater's taste**, which
+creates two specific dangers: (a) with hundreds of candidate patterns, some will look
+impressive by pure chance, and (b) one person's ratings may simply be inconsistent, so
+there may be little real signal to find. Every method below was chosen to defend
+against one of those two dangers.
+
+**1. Ratings treated as ordered, not as categories.**
+Dislike, not sure, and like are scored −1, 0, +1 and treated as an *ordered* scale.
+*Why:* it lets us ask the stronger question "does this pattern move the rating
+steadily in one direction?" rather than the weaker "does this pattern appear more in
+one bucket?" We verify the ordering is real rather than assuming it (see the
+diagnostic on where "not sure" falls).
+
+**2. Features are pure arithmetic on the note numbers.**
+Every quantity (intervals, spreads, movement, clash counts, melodic shape) is computed
+by adding and subtracting the note values. *Why:* no music-theory categories such as
+"major", "dominant seventh" or "cadence" are imposed, so the data is free to reveal
+structure that a theory-driven feature set would hide — and any finding is a fact
+about the numbers, not an artefact of the labels we chose.
+
+**3. Split into a discovery half and a held-out half (60/40).**
+Patterns are *found* on the discovery half only, then *tested* on the held-out half,
+which was never examined during the search. *Why:* this is the single most important
+safeguard. A pattern found and scored on the same data is almost guaranteed to look
+significant — the "garden of forking paths" problem. Confirming on untouched data
+means a surviving pattern had to predict something it was not fitted to.
+
+**4. Rank correlation for the initial screen.**
+Each feature is ranked against the ordered rating (Spearman rank correlation).
+*Why:* rank-based methods assume only that the relationship is consistently increasing
+or decreasing — not that it is a straight line, and not that the values are normally
+distributed. Pitch data is bounded and lumpy, so this is the safe choice.
+
+**5. Subgroup discovery to find pockets, not just trends.**
+A search over threshold conditions and their pairs, scored by how far a subgroup's
+average rating departs from the overall average, weighted by how many items it covers.
+*Why:* a feature can be useless overall yet decisive within a region (for example only
+when the melody is already high). Weighting by size stops the search from chasing tiny
+freak subgroups of three or four items.
+
+**6. Gradient-boosted trees as a cross-check.**
+A non-linear model is fitted and its feature importances inspected.
+*Why:* it catches curved relationships and interactions that a rank correlation would
+miss, so promising features are not overlooked. It is used only to *nominate*
+candidates — never as evidence on its own.
+
+**7. Permutation tests for confirmation.**
+On the held-out half, ratings are randomly reshuffled thousands of times to build the
+distribution of effects expected from chance alone; the real effect is compared to it.
+*Why:* this makes no assumption whatsoever about the shape of the data. It answers
+exactly the right question: "how often would shuffled ratings produce a gap this
+large?"
+
+**8. Effect size reported alongside significance (Cliff's delta).**
+This measures how often items matching a pattern are rated above items that do not,
+on a scale from −1 to +1, where 0 means no difference.
+*Why:* a small p-value only says an effect is unlikely to be zero; it does not say the
+effect is *large*. Reporting both prevents a statistically detectable but musically
+trivial tendency from being oversold.
+
+**9. False-discovery-rate correction across all tests (Benjamini–Hochberg).**
+The p-values from all confirmation tests are corrected together.
+*Why:* testing many patterns at the usual 5% threshold means roughly 1 in 20 pure-noise
+patterns passes. This correction controls the share of false positives among the
+patterns we declare real, which is the appropriate goal for a discovery study.
+
+**10. Bootstrap confidence intervals for stability.**
+Each surviving pattern is re-measured on a thousand resamples of the held-out data.
+*Why:* a pattern that survives testing but whose interval straddles zero is riding on a
+handful of influential items. Only patterns whose effect keeps the same sign across
+resamples are reported as confirmed.
+
+**11. A noise ceiling from near-identical progressions.**
+For each progression we check how often its most musically similar neighbours received
+a *different* rating.
+*Why:* with one rater and no repeated presentations, we cannot measure reliability
+directly. If near-identical items are rated inconsistently, that inconsistency caps how
+well *any* method could possibly do — and stops us blaming a weak result on the
+analysis when the ceiling is the real constraint.
+
+**12. A whole-model signal check against a shuffled baseline.**
+A classifier is trained with cross-validation to separate liked from not-liked, and its
+score is compared against the same classifier trained on randomly shuffled ratings.
+*Why:* this is the honest global question — is there enough signal here to predict a
+rating at all? It is reported even when the answer is unflattering, because individual
+patterns can be real while still not adding up to a usable predictor.
+
+**How to read the results tables.**
+*Effect size* runs from −1 to +1: positive means the pattern is rated higher than the
+rest, negative means lower, and roughly 0.1 is small, 0.3 moderate. The *95% interval*
+is the plausible range for that effect; if it crosses zero the pattern is unstable.
+The *p-value* is the chance of seeing an effect this large if the pattern were pure
+noise. *Number matching* is how many progressions the pattern actually covers.
+
+---
+"""
 
 
 # --------------------------------------------------------------------------- #
@@ -623,7 +787,8 @@ def write_findings_md(out, ceiling, path, diag=None):
     ceil_below = ceiling["rough_accuracy_ceiling"] < ceiling["majority_class_baseline_acc"]
 
     def md_table(rows):
-        head = "| pattern (plain English) | direction | n | Cliff's δ | 95% CI | perm p |\n|---|---|---|---|---|---|"
+        head = ("| pattern | direction | number matching | effect size | 95% interval "
+                "| p-value |\n|---|---|---|---|---|---|")
         body = "\n".join(
             f"| {humanize(r['pattern'])} | {r['direction'].replace('toward ','')} | {r['n_matching']} "
             f"| {r['cliffs_delta']:+.2f} | [{r['ci_lo']:+.2f}, {r['ci_hi']:+.2f}] | {r['perm_p']:.4f} |"
@@ -632,42 +797,47 @@ def write_findings_md(out, ceiling, path, diag=None):
 
     lines = []
     lines.append("# What makes a chord progression liked — findings\n")
-    lines.append("_Generated by `discover.py` (deterministic, `random_state=0`). "
-                 "Re-run the script to regenerate._\n")
+    lines.append("_Generated by the analysis script `discover.py`, with a fixed random seed "
+                 "so the numbers reproduce exactly. Re-run the script to regenerate._\n")
 
     gs = diag["global_signal"] if diag else None
-    lines.append("## TL;DR\n")
+    lines.append(methods_section())
+    lines.append("## Summary of what was found\n")
     lines.append(
-        f"- **{n_surv} of {n_tested}** candidate patterns survived held-out confirmation "
-        f"(Benjamini–Hochberg FDR, α=0.05) **and** had stable bootstrap CIs.\n"
-        "- **The dominant driver is DISSONANCE / roughness**: progressions with **fewer "
-        "semitone clashes** (`clash_ic1`, `clash_le1` — counts of near-unison/semitone intervals) "
-        "are reliably **liked**; clash-heavy ones are **disliked**. This is the strongest signal "
-        "found, and it is pure subtraction — no music theory imposed.\n"
-        "- Secondary, weaker signals: **smaller voice leaps / calmer top note** (`max_voice_leap`, "
-        "`mel_motion`, `v3_leap`) and a **higher final chord** (`n14`, `n15`).\n"
-        + (f"- **There IS real signal** (test #9): like-vs-rest CV-AUC = **{gs['cv_auc']:.2f}** "
-           f"vs a permutation null of {gs['null_mean']:.2f} (p = {gs['null_p']:.3f}). "
-           "Modest but well above chance.\n" if gs else "")
-        + "- Effect sizes per pattern are still **small** (Cliff's δ ≈ 0.12–0.19): useful as "
-        "*tendencies*, not as a confident per-chord predictor.\n")
+        f"- **{n_surv} of {n_tested}** candidate patterns survived confirmation on the "
+        "held-out half, kept their significance after the false-discovery-rate correction, "
+        "**and** held a stable effect across bootstrap resamples.\n"
+        "- **The dominant driver is dissonance, or roughness**: progressions containing "
+        "**fewer clashing note-pairs** — notes a semitone or less apart, sounding together — "
+        "are reliably **liked**, while clash-heavy ones are **disliked**. This is the strongest "
+        "signal found, and it comes from pure subtraction between note values, with no music "
+        "theory imposed.\n"
+        "- Secondary, weaker signals: **smaller jumps between chords and a calmer top note**, "
+        "and a **higher-pitched final chord**.\n"
+        + (f"- **There is real signal.** A classifier separating liked from not-liked scores "
+           f"**{gs['cv_auc']:.2f}** where 0.50 is pure chance, against a shuffled-rating "
+           f"baseline of {gs['null_mean']:.2f} (p = {gs['null_p']:.3f}). "
+           "Modest, but above chance.\n" if gs else "")
+        + "- Effect sizes per pattern remain **small** (about 0.12 to 0.19 on the −1 to +1 "
+        "scale): useful as *tendencies*, not as a confident per-progression predictor.\n")
 
     if top is not None:
         lines.append("## Strongest confirmed pattern\n")
         lines.append(
             f"> **{humanize(top['pattern'])}** → {top['direction']}  \n"
-            f"> Cliff's δ = {top['cliffs_delta']:+.2f} "
-            f"(95% CI [{top['ci_lo']:+.2f}, {top['ci_hi']:+.2f}]), "
-            f"perm p = {top['perm_p']:.4f}, n = {top['n_matching']}.\n")
+            f"> Effect size {top['cliffs_delta']:+.2f} "
+            f"(95% interval [{top['ci_lo']:+.2f}, {top['ci_hi']:+.2f}]), "
+            f"p-value {top['perm_p']:.4f}, matching {top['n_matching']} progressions.\n")
 
-    lines.append("## All confirmed patterns (survived FDR + stable)\n")
+    lines.append("## All confirmed patterns "
+                 "(significant after correction, with a stable effect)\n")
     lines.append(md_table(surv) if n_surv else "_None survived._\n")
 
     rej = out[~out["survives_fdr"]]
     if len(rej):
         lines.append("\n## Candidates that did NOT survive\n")
         lines.append("Found in discovery but failed held-out confirmation — treat as noise:\n")
-        lines.append("\n".join(f"- {humanize(r['pattern'])} (perm p = {r['perm_p']:.3f})"
+        lines.append("\n".join(f"- {humanize(r['pattern'])} (p-value {r['perm_p']:.3f})"
                                for _, r in rej.iterrows()))
 
     # ---- all tests, grouped by underlying signal, confirmed + failed ----
@@ -683,110 +853,142 @@ def write_findings_md(out, ceiling, path, diag=None):
         return "E — Chord width / spread"
 
     lines.append(f"\n## All {n_tested} tests, grouped by signal (confirmed + failed)\n")
-    lines.append("Every candidate carried from discovery into held-out permutation testing. "
-                 "Within each group, ordered strongest-first by p-value. "
-                 "✅ = survived FDR + stable bootstrap; ❌ = failed.\n")
+    lines.append("Every candidate carried from the discovery half into held-out permutation "
+                 "testing. Within each group, ordered strongest-first by p-value. "
+                 "✅ = survived the false-discovery-rate correction with a stable effect; "
+                 "❌ = failed.\n")
     tmp = out.copy()
     tmp["theme"] = tmp["pattern"].map(theme)
     for g in sorted(tmp["theme"].unique()):
         sub = tmp[tmp["theme"] == g].sort_values("perm_p")
         lines.append(f"\n### Group {g}\n")
-        lines.append("| pattern (plain English) | δ | perm p | verdict |\n|---|---|---|---|")
+        lines.append("| pattern | effect size | p-value | verdict |\n|---|---|---|---|")
         for _, r in sub.iterrows():
             v = "✅" if r["survives_fdr"] else "❌"
             note = ""
             if not r["survives_fdr"] and r["perm_p"] < 0.05:
-                note = " (raw p<0.05; lost to FDR)"
+                note = " (looked significant on its own, but did not survive the correction for testing many patterns)"
             lines.append(f"| {humanize(r['pattern'])} | {r['cliffs_delta']:+.2f} "
                          f"| {r['perm_p']:.4f} | {v}{note} |")
 
-    lines.append("\n**The conjunctions are mostly additive, not synergistic.** Test #10 "
-                 "(likelihood-ratio on logistic product terms) found **no significant interaction** "
-                 "for the tested pairs — the subgroup conjunctions improve mean rating by stacking "
-                 "two independent main effects (low dissonance + calm voice-leading), not by genuine "
-                 "synergy. So the takeaway is simply: **multiple weak signals add up.**\n")
+    lines.append("\n**Combined conditions mostly add up rather than multiply.** A formal test for "
+                 "interaction (comparing a model with a combined term against one without) found "
+                 "**no significant interaction** for the pairs tested — a two-part pattern raises "
+                 "the average rating by stacking two independent effects (less dissonance plus "
+                 "calmer movement between chords), not through genuine synergy. The practical "
+                 "takeaway is simply: **several weak signals accumulate.**\n")
 
-    lines.append("\n## How to read the patterns (plain language)\n")
+    lines.append("\n## What the musical quantities mean\n")
     lines.append(
-        "- `clash_ic1` — count of **semitone clashes** (interval-class 1) in the progression. "
-        "Lower = less dissonant = more liked. **Strongest single signal.**\n"
-        "- `clash_le1` / `clash_le2` — count of intervals ≤1 / ≤2 units (near-unison beating). Lower = liked.\n"
-        "- `min_interval` — the tightest interval anywhere; very small = harsh.\n"
-        "- `max_voice_leap` — the **biggest single jump** any voice makes between chords. Smaller = smoother.\n"
-        "- `mel_motion`, `v3_leap` — how much the **top note** moves between chords; less = smoother.\n"
-        "- `n13`–`n15` — the **final chord's notes**; higher = a higher-pitched ending.\n")
+        "- **Semitone clashes** — how many pairs of notes sounding together sit one semitone "
+        "apart. Fewer clashes means less dissonance, which is the strongest single predictor "
+        "of being liked.\n"
+        "- **Near-unison clashes** — pairs of notes less than a semitone apart, close enough to "
+        "beat against each other. Fewer is liked.\n"
+        "- **Tightest interval** — the smallest gap between any two notes anywhere in the "
+        "progression; a very small gap sounds harsh.\n"
+        "- **Biggest single jump** — the largest distance any one voice moves when the chord "
+        "changes. Smaller jumps make a smoother progression.\n"
+        "- **Top-note movement** — how far the highest note travels from chord to chord; less "
+        "movement reads as calmer.\n"
+        "- **Final-chord height** — the pitch of the notes in the last chord; higher means a "
+        "higher-pitched ending.\n")
 
-    lines.append("## Noise ceiling (single-rater self-consistency)\n")
+    lines.append("## How consistent were the ratings? (the ceiling on any result)\n")
     lines.append(
-        f"| metric | value |\n|---|---|\n"
-        f"| mean 5-NN label disagreement | {ceiling['mean_5NN_label_disagreement']:.3f} |\n"
-        f"| near-duplicate conflict rate | {ceiling['near_duplicate_conflict_rate']:.3f} |\n"
-        f"| majority-class baseline acc | {ceiling['majority_class_baseline_acc']:.3f} |\n"
-        f"| rough accuracy ceiling | {ceiling['rough_accuracy_ceiling']:.3f} |\n")
+        f"| measure | value |\n|---|---|\n"
+        f"| average disagreement with the 5 most similar progressions "
+        f"| {ceiling['mean_5NN_label_disagreement']:.3f} |\n"
+        f"| how often near-identical progressions got different ratings "
+        f"| {ceiling['near_duplicate_conflict_rate']:.3f} |\n"
+        f"| accuracy from always guessing the most common rating "
+        f"| {ceiling['majority_class_baseline_acc']:.3f} |\n"
+        f"| estimated best accuracy any method could reach "
+        f"| {ceiling['rough_accuracy_ceiling']:.3f} |\n")
     nd = ceiling['near_duplicate_conflict_rate'] * 100
     recon = ""
     if diag:
         gs2 = diag['global_signal']
-        recon = (" **Important reconciliation:** this ceiling is computed on the 16 *raw notes*, "
-                 "where like/dislike are nearly inseparable. But the engineered features (especially "
-                 f"dissonance counts) *do* extract real signal — test #9 reaches CV-AUC "
-                 f"{gs2['cv_auc']:.2f} (p={gs2['null_p']:.3f}). So the labels are **not** hopeless "
-                 "noise; raw note positions are simply the wrong representation, and the right "
-                 "features (intervals / roughness) beat the raw-pitch ceiling.")
+        recon = (" **An important reconciliation:** this ceiling is measured by comparing the raw "
+                 "note positions, where liked and disliked progressions are nearly inseparable. "
+                 "The derived musical quantities — especially the clash counts — *do* extract "
+                 "real signal: the whole-model check scores "
+                 f"{gs2['cv_auc']:.2f} against a chance level of 0.50 (p={gs2['null_p']:.3f}). "
+                 "So the ratings are **not** hopeless noise. Raw note positions are simply the "
+                 "wrong way to look at the music, and the right quantities — intervals and "
+                 "roughness — beat that ceiling.")
     lines.append(
-        f"\nNear-duplicate chords receive *different* labels ~{nd:.0f}% of the time **in raw-pitch "
-        f"space** — close to what random labels would produce.{recon}\n")
+        f"\nNear-identical progressions received *different* ratings about {nd:.0f}% of the time "
+        f"when compared by raw note positions — close to what purely random ratings would "
+        f"produce.{recon}\n")
 
-    lines.append("## Method (one paragraph)\n")
+    lines.append("## Method in one paragraph\n")
     lines.append(
-        "Data was split 60/40 into **discovery** and **held-out** sets. Patterns were *surfaced* on "
-        "discovery only (Spearman monotonic screening, subgroup discovery via WRAcc, contrast/emerging "
-        "patterns, and gradient-boosted importance), then *confirmed* on the held-out set with "
-        "permutation tests, Cliff's δ effect sizes, and Benjamini–Hochberg FDR control — so no pattern "
-        "is believed on the data that generated it. Surviving patterns were bootstrapped for stability, "
-        "and a k-NN label-disagreement estimate provides the noise ceiling. All features are pure "
-        "arithmetic on the note integers (intervals, spreads, motion, mod-12 interval content); "
-        "no music-theory labels were imposed.\n")
+        "The data was split 60/40 into a **discovery** half and a **held-out** half. Patterns were "
+        "surfaced on the discovery half only — by rank-correlating each musical quantity against "
+        "the ordered rating, searching for subgroups whose average rating departs unusually far "
+        "from the overall average, contrasting how often a condition appears among liked versus "
+        "disliked progressions, and inspecting which quantities a non-linear model leans on. "
+        "They were then confirmed on the held-out half using permutation tests, an effect size "
+        "that counts how often matching progressions outrank non-matching ones, and a "
+        "false-discovery-rate correction — so no pattern is believed on the data that produced "
+        "it. Survivors were re-measured across bootstrap resamples for stability, and the "
+        "disagreement between musically similar progressions provides the noise ceiling. Every "
+        "quantity is pure arithmetic on the note numbers (intervals, spreads, movement, and "
+        "octave-folded interval content); no music-theory categories were imposed.\n")
 
     if diag:
         d = diag
-        lines.append("## Validity & methodology diagnostics (#6–#11)\n")
+        lines.append("## Checks on whether the analysis itself is trustworthy\n")
         gs = d["global_signal"]
         lines.append(
-            f"**#9 Is there any signal?** Like-vs-rest **CV-AUC = {gs['cv_auc']:.3f}** "
-            f"(permutation null {gs['null_mean']:.3f}, p = {gs['null_p']:.3f}). "
-            + ("There **is** detectable signal above chance — but small.\n"
+            f"**Is there any signal at all?** Separating liked from not-liked scores "
+            f"**{gs['cv_auc']:.3f}**, where 0.50 is pure chance and 1.00 is perfect; the same "
+            f"method on randomly shuffled ratings scores {gs['null_mean']:.3f} "
+            f"(p = {gs['null_p']:.3f}). "
+            + ("There **is** detectable signal above chance — but it is small.\n"
                if gs['null_p'] < 0.05 else
-               "**No signal** beyond chance: the notes do not predict the label.\n"))
+               "**No signal beyond chance**: the notes alone do not predict the rating.\n"))
         ns = d["notsure_between"]
         lines.append(
-            f"**#7 Is 'not sure' between like & dislike?** On the like-vs-dislike axis: "
-            f"dislike={ns['dislike_score']:+.2f}, notsure={ns['notsure_score']:+.2f}, "
-            f"like={ns['like_score']:+.2f} → notsure **{'is' if ns['is_between'] else 'is NOT'}** "
-            f"between. Ordinal framing **{'supported' if ns['is_between'] else 'questionable'}**.\n")
+            f"**Does 'not sure' really sit between dislike and like?** Placing all three groups "
+            f"on a single dislike-to-like scale gives dislike {ns['dislike_score']:+.2f}, "
+            f"not sure {ns['notsure_score']:+.2f}, like {ns['like_score']:+.2f} → 'not sure' "
+            f"**{'does' if ns['is_between'] else 'does NOT'}** fall between the other two. "
+            f"Treating the ratings as an ordered scale is therefore "
+            f"**{'supported' if ns['is_between'] else 'questionable'}**.\n")
         mt = d["microtuning"]
         lines.append(
-            f"**#6 Microtuning grid.** gcd of all note values = {mt['grid_gcd']} "
-            f"({'coarse grid' if mt['grid_gcd'] > 1 else 'fine / quarter-tone grid'}); "
-            f"{mt['frac_odd']*100:.0f}% of notes are odd-valued. Off-grid notes vs label: "
-            f"ρ={mt['odd_vs_label_rho']:+.3f} (p={mt['p']:.3f}); "
-            f"like-rate with no odd notes {mt['like_rate_no_odd']:.2f} vs "
-            f"{mt['like_rate_any_odd']:.2f} with some.\n")
+            f"**Is the music on a standard tuning grid, and does that matter?** The note values "
+            f"share a common divisor of {mt['grid_gcd']} "
+            f"({'a coarse grid' if mt['grid_gcd'] > 1 else 'a fine, quarter-tone-capable grid'}); "
+            f"{mt['frac_odd']*100:.0f}% of notes fall between the standard semitone steps. "
+            f"Those off-grid notes track the rating at {mt['odd_vs_label_rho']:+.3f} on a "
+            f"−1 to +1 scale (p={mt['p']:.3f}); the share of liked progressions is "
+            f"{mt['like_rate_no_odd']:.2f} when none are off-grid versus "
+            f"{mt['like_rate_any_odd']:.2f} when some are.\n")
         oc = d["octave"]
         lines.append(
-            f"**#11 Octave invariance.** AUC raw-pitch {oc['auc_raw_pitch']:.3f} vs "
-            f"mod-12 {oc['auc_pitch_class']:.3f} → "
-            f"{'absolute register matters' if oc['auc_raw_pitch'] > oc['auc_pitch_class']+0.01 else 'pitch-class is enough'}.\n")
+            f"**Does the actual octave matter, or only which pitch it is?** Using exact pitches "
+            f"scores {oc['auc_raw_pitch']:.3f}, versus {oc['auc_pitch_class']:.3f} when octaves "
+            f"are folded together → "
+            f"{'how high or low the music sits genuinely matters' if oc['auc_raw_pitch'] > oc['auc_pitch_class']+0.01 else 'which pitch it is matters, but not which octave'}.\n")
         rd = d["rater_drift"]
         lines.append(
-            f"**#8 Rater drift.** id-order vs label ρ={rd['id_vs_label_rho']:+.3f} "
-            f"(p={rd['p']:.3f}); like-rate early {rd['like_rate_early']:.2f} vs "
-            f"late {rd['like_rate_late']:.2f}.\n")
-        lines.append("**#10 Interaction tests** (likelihood-ratio on logistic product term):\n")
-        lines.append("| feature pair | LR stat | p | verdict |\n|---|---|---|---|")
+            f"**Did the rater's taste drift during the session?** Position in the rating order "
+            f"tracks the rating at only {rd['id_vs_label_rho']:+.3f} (p={rd['p']:.3f}); the share "
+            f"of liked progressions was {rd['like_rate_early']:.2f} early on versus "
+            f"{rd['like_rate_late']:.2f} later.\n")
+        lines.append("**Do paired conditions genuinely reinforce each other, or just add up?** "
+                     "Each pair below was tested by comparing a model containing a combined term "
+                     "against one without it:\n")
+        lines.append("| pair of musical quantities | test statistic | p-value | verdict |"
+                     "\n|---|---|---|---|")
         for pair, dd in d["interactions"].items():
-            lines.append(f"| `{pair}` | {dd['lr_stat']:.2f} | {dd['p']:.3f} | "
-                         f"{'interaction real' if dd['p'] < 0.05 else 'additive'} |")
+            fa, _, fb = pair.partition(" x ")
+            nice = f"{plain_feature(fa.strip())} × {plain_feature(fb.strip())}"
+            lines.append(f"| {nice} | {dd['lr_stat']:.2f} | {dd['p']:.3f} | "
+                         f"{'they reinforce each other' if dd['p'] < 0.05 else 'they simply add up'} |")
         lines.append("")
 
     with open(path, "w") as fh:
