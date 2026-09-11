@@ -1,0 +1,21 @@
+pattern,direction,source,n_matching,mean_rating_shift,cliffs_delta_heldout,cliffs_delta_discovery,cliffs_delta_id_matched,perm_p,survives_fdr,ci_lo,ci_hi,bootstrap_stable,graded_rho,graded_p
+clash_ic1 <= median(3.00)  [rho=-0.339],toward LIKE,spearman,427,0.3163,0.1844,0.3444,0.1281,0.0002,True,0.1156,0.2549,True,-0.2348,0.0000
+subgroup: clash_ic1 > 2.00 AND c2_icmin <= 1.00,toward DISLIKE,subgroup,386,-0.2425,-0.1364,-0.3502,-0.1477,0.0002,True,-0.2082,-0.0621,True,,
+subgroup: pc_entropy <= 3.20 AND clash_ic1 <= 2.00,toward LIKE,subgroup,175,0.3742,0.2095,0.4310,0.1261,0.0002,True,0.1189,0.2958,True,,
+subgroup: pc_entropy <= 3.20 AND clash_le1 <= 3.00,toward LIKE,subgroup,410,0.3313,0.1933,0.4195,0.0664,0.0002,True,0.1211,0.2618,True,,
+subgroup: pc_entropy <= 3.20 AND clash_ic1 <= 3.00,toward LIKE,subgroup,319,0.3670,0.2115,0.4321,0.0679,0.0002,True,0.1381,0.2801,True,,
+subgroup: clash_ic1 > 3.00 AND c2_icmin <= 1.00,toward DISLIKE,subgroup,243,-0.2978,-0.1710,-0.3984,-0.1227,0.0002,True,-0.2423,-0.0954,True,,
+clash_le1 <= median(2.00)  [rho=-0.258],toward LIKE,spearman,383,0.3720,0.2197,0.1901,0.1892,0.0002,True,0.1493,0.2899,True,-0.2416,0.0000
+subgroup: pc_entropy <= 3.20 AND c2_icmin > 1.00,toward LIKE,subgroup,149,0.2542,0.1438,0.4173,-0.0180,0.0006,True,0.0488,0.2377,True,,
+subgroup: clash_ic1 > 2.00 AND c0_gap1 > 2.00,toward DISLIKE,subgroup,256,-0.2192,-0.1247,-0.4173,-0.0945,0.0006,True,-0.1931,-0.0549,True,,
+pc_entropy <= median(3.12)  [rho=-0.214],toward LIKE,spearman,347,0.2167,0.1263,0.1616,0.0492,0.0014,True,0.0582,0.2030,True,-0.1414,0.0002
+subgroup: pc_entropy <= 3.20,toward LIKE,subgroup,520,0.2029,0.1118,0.3984,-0.0798,0.0036,True,0.0326,0.1874,True,,
+subgroup: pc_entropy > 3.20,toward DISLIKE,subgroup,181,-0.2029,-0.1118,-0.3984,0.0798,0.0064,True,-0.1852,-0.0328,True,,
+pc_max > median(3.00)  [rho=+0.212],toward LIKE,spearman,146,0.1862,0.1059,0.1833,0.0433,0.0166,True,0.0140,0.1969,True,0.0858,0.0231
+pc_distinct <= median(10.00)  [rho=-0.212],toward LIKE,spearman,585,0.1707,0.0901,0.3342,0.0363,0.0392,False,,,,-0.1451,0.0001
+subgroup: clash_ic1 > 2.00 AND move1 > -1.00,toward DISLIKE,subgroup,286,-0.0801,-0.0393,-0.3701,-0.1227,0.2108,False,,,,,
+common2 <= median(1.00)  [rho=-0.163],toward LIKE,spearman,528,0.0900,0.0573,0.0733,0.0640,0.2312,False,,,,-0.0500,0.1858
+c0_gap1 <= median(3.00)  [rho=-0.173],toward DISLIKE,spearman,438,-0.0696,-0.0448,0.0606,-0.1039,0.2951,False,,,,0.0284,0.4531
+c2_pcspread > median(8.00)  [rho=+0.186],toward LIKE,spearman,300,0.0206,0.0192,0.2424,0.0327,0.7512,False,,,,0.0374,0.3228
+c1_gap2 > median(2.00)  [rho=+0.262],toward DISLIKE,spearman,410,-0.0153,-0.0102,0.1919,0.0904,0.8122,False,,,,0.0261,0.4907
+c2_icmax <= median(5.00)  [rho=-0.177],toward DISLIKE,spearman,394,-0.0033,-0.0018,0.2256,0.0664,0.9604,False,,,,0.0148,0.6953
