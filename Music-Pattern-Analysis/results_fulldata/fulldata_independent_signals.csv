@@ -1,0 +1,6 @@
+step,feature,partial_rho,perm_p,accepted,cum_r2,stands_for
+1,clash_ic1,-0.2554,0.0005,True,0.0652,clash_le1
+2,v2_drift,0.1518,0.0025,True,0.0867,total_drift; v3_drift; n14; v1_drift
+3,voice_leap_total,-0.1498,0.0010,True,0.1072,abs_motion; v2_leap; v1_leap; v3_leap
+4,c0_icmin,-0.1494,0.0035,True,0.1272,
+5,pc_distinct,-0.1094,0.1269,False,0.1272,pc_entropy
